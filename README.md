@@ -113,7 +113,7 @@ The entire app is three files: `index.html`, `sw.js`, and `manifest.json`. That'
 Want to modify it? Clone the repo and open `index.html` in your browser. That's literally it. No install step, no dev server, no build process.
 
 ```bash
-git clone https://github.com/yourusername/nosleep-web.git
+git clone https://github.com/balzabu/nosleep-web.git
 cd nosleep-web
 # Open index.html in your browser
 ```
