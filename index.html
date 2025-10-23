@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="Web-based tool to keep your screen awake without installing suspicious executables">
+    <title>N0SLH33P</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Scanline effect */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 255, 0, 0.03) 0px,
+                rgba(0, 255, 0, 0.03) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* CRT flicker effect */
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 255, 0, 0.02);
+            pointer-events: none;
+            z-index: 2;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            50% { opacity: 1; }
+            100% { opacity: 0.97; }
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+            padding: 20px;
+            border: 2px solid #00ff00;
+            background: rgba(0, 20, 0, 0.8);
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff00;
+            letter-spacing: 3px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+            opacity: 0.7;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #00ff00;
+            background: rgba(0, 50, 0, 0.5);
+            font-size: 1.2rem;
+        }
+
+        .status.active {
+            animation: glitch 3s infinite;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+
+        .status-text {
+            display: inline-block;
+        }
+
+        .cursor {
+            animation: blink 1s infinite;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            padding: 15px 40px;
+            background: transparent;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background: #00ff00;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        button:disabled:hover {
+            background: transparent;
+            color: #00ff00;
+            box-shadow: none;
+            transform: scale(1);
+        }
+
+        .info {
+            margin-top: 30px;
+            font-size: 0.85rem;
+            opacity: 0.6;
+            line-height: 1.6;
+        }
+
+        .error {
+            color: #ff3333;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            button {
+                padding: 12px 30px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ N0SLH33P ⚡</h1>
+        <div class="subtitle">[ SLEEP PREVENTION SYSTEM ]</div>
+
+        <div class="status" id="status">
+            <span class="status-text">STATUS: STANDBY</span><span class="cursor">_</span>
+        </div>
+
+        <div class="buttons">
+            <button id="startBtn">▶ START</button>
+            <button id="stopBtn" disabled>■ STOP</button>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="info">
+            <p>▸ Prevents screen and system sleep without installing sketchy executables</p>
+            <p>▸ Works on all modern browsers (Chrome, Firefox, Edge, Safari, Opera)</p>
+            <p>▸ Installable as PWA and works offline</p>
+        </div>
+    </div>
+
+    <script>
+        let wakeLock = null;
+        let noSleepVideo = null;
+        let isActive = false;
+        let useWakeLock = false;
+        
+        const statusDiv = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const errorDiv = document.getElementById('error');
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('✓ Service Worker registered'))
+                .catch(err => console.error('✗ Service Worker error:', err));
+        }
+
+        // Detect Wake Lock API support
+        useWakeLock = 'wakeLock' in navigator;
+        console.log(`Method used: ${useWakeLock ? 'Wake Lock API' : 'Video Fallback'}`);
+
+        // Initialize video fallback for browsers without Wake Lock (Firefox, Safari)
+        function initVideoFallback() {
+            if (noSleepVideo) return;
+            
+            noSleepVideo = document.createElement('video');
+            noSleepVideo.setAttribute('playsinline', '');
+            noSleepVideo.setAttribute('muted', '');
+            noSleepVideo.style.position = 'fixed';
+            noSleepVideo.style.opacity = '0';
+            noSleepVideo.style.left = '-9999px';
+            noSleepVideo.style.width = '1px';
+            noSleepVideo.style.height = '1px';
+            
+            // Create minimal WebM video (1 black frame)
+            const webmData = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwH/////////FUmpZpkq17GDD0JATYCGQ2hyb21lV0GGQ2hyb21lFlSua7+uvdeBAXPFh1mBmDZDgQKGhkBDZ2xvYmFsZmBXTULigBmFGYABR3JpY2luUyNhZ2FiYmVsXTBWRjGWQ2hyb2JlbGwb5whhciBnQ2FsQGKGZGZjQyBnbG9iYWxWaWRlb0BnaGFydGhhYWxlXBhTgQKqgQKgqQOqCQOTAmJiYmJiYmJiYmJiYmJiYmJpZG14pYjGfQCvFe4C/v//vg==';
+            
+            noSleepVideo.src = webmData;
+            noSleepVideo.loop = true;
+            
+            document.body.appendChild(noSleepVideo);
+        }
+
+        // Start sleep prevention
+        async function startNoSleep() {
+            try {
+                if (useWakeLock) {
+                    // Use Wake Lock API (Chrome, Edge, Opera)
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released');
+                        if (isActive) {
+                            // Retry if still active
+                            setTimeout(() => {
+                                if (isActive && document.visibilityState === 'visible') {
+                                    startNoSleep();
+                                }
+                            }, 100);
+                        }
+                    });
+
+                    console.log('✓ Wake Lock API activated');
+                } else {
+                    // Use video fallback (Firefox, Safari, others)
+                    initVideoFallback();
+                    
+                    // Play the video
+                    try {
+                        await noSleepVideo.play();
+                        console.log('✓ Video fallback activated');
+                    } catch (err) {
+                        // If play() fails, user interaction might be needed
+                        console.warn('Autoplay blocked, retrying...');
+                        // Play will be retried on click
+                        document.addEventListener('click', async () => {
+                            if (isActive && noSleepVideo.paused) {
+                                await noSleepVideo.play();
+                            }
+                        }, { once: true });
+                    }
+                }
+
+                isActive = true;
+                updateStatus(true);
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                errorDiv.classList.remove('show');
+                
+            } catch (err) {
+                showError(`Error: ${err.message}`);
+                console.error('Activation error:', err);
+                isActive = false;
+            }
+        }
+
+        // Stop sleep prevention
+        async function stopNoSleep() {
+            isActive = false;
+
+            try {
+                if (useWakeLock && wakeLock !== null) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    console.log('✓ Wake Lock API deactivated');
+                } else if (noSleepVideo) {
+                    noSleepVideo.pause();
+                    console.log('✓ Video fallback deactivated');
+                }
+
+                updateStatus(false);
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+
+            } catch (err) {
+                console.error('Deactivation error:', err);
+            }
+        }
+
+        // Update visual status
+        function updateStatus(active) {
+            const method = useWakeLock ? 'WAKE LOCK' : 'VIDEO FALLBACK';
+            if (active) {
+                statusDiv.innerHTML = `<span class="status-text">STATUS: ACTIVE [${method}]</span><span class="cursor">_</span>`;
+                statusDiv.classList.add('active');
+            } else {
+                statusDiv.innerHTML = '<span class="status-text">STATUS: STANDBY</span><span class="cursor">_</span>';
+                statusDiv.classList.remove('active');
+            }
+        }
+
+        // Show error
+        function showError(message) {
+            errorDiv.textContent = `⚠ ${message}`;
+            errorDiv.classList.add('show');
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startNoSleep);
+        stopBtn.addEventListener('click', stopNoSleep);
+
+        // Handle tab visibility changes
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'hidden' && isActive) {
+                // Tab hidden while system is active
+                const shouldStop = confirm(
+                    '⚠️ WARNING\n\n' +
+                    'Sleep prevention is active but the tab is in the background.\n\n' +
+                    'Protection might not work correctly when the tab is not visible.\n\n' +
+                    'Do you want to STOP the system?\n\n' +
+                    'OK = Stop\n' +
+                    'Cancel = Continue (will reactivate when you return to the tab)'
+                );
+
+                if (shouldStop) {
+                    await stopNoSleep();
+                }
+            } else if (document.visibilityState === 'visible' && isActive) {
+                // Tab visible again, reactivate
+                if (useWakeLock) {
+                    await startNoSleep();
+                } else if (noSleepVideo && noSleepVideo.paused) {
+                    await noSleepVideo.play();
+                }
+            }
+        });
+
+        // Cleanup when page is closed
+        window.addEventListener('beforeunload', () => {
+            if (isActive) {
+                stopNoSleep();
+            }
+        });
+
+        // Show method used in console
+        window.addEventListener('load', () => {
+            console.log('═══════════════════════════════════════');
+            console.log('🔥 N0SLH33P INITIALIZED');
+            console.log('═══════════════════════════════════════');
+            console.log(`Browser: ${navigator.userAgent.includes('Firefox') ? 'Firefox' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Chrome/Edge/Opera'}`);
+            console.log(`Method: ${useWakeLock ? '✓ Wake Lock API (native)' : '✓ Video Fallback (compatibility)'}`);
+            console.log(`PWA: ${window.matchMedia('(display-mode: standalone)').matches ? '✓ Installed' : '○ Browser'}`);
+            console.log('═══════════════════════════════════════');
+        });
+    </script>
+</body>
+</html>
