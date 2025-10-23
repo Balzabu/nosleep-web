@@ -2,7 +2,8 @@
 
 > Keep your screen awake without installing sketchy executables on your machine.
 
-A browser-based sleep prevention tool that actually works. No downloads, no sus registry edits, no "trust me bro" installers. Just open, click start, and your screen stays awake.
+A browser-based sleep prevention tool that actually works. No downloads, no sus registry edits, no "trust me bro" installers.<br>
+Just open, click start, and your screen stays awake.
 
 **Live Demo:** https://balzabu.github.io/nosleep-web/
 
@@ -22,10 +23,10 @@ Yeah, me too. That's why this exists. It's just a web page that leverages browse
 
 The tool uses two different approaches depending on your browser:
 
-**Wake Lock API** (Chrome, Edge, Opera, Brave)
+**Wake Lock API** (Chrome, Edge, Opera, Brave)<br>
 Native browser API that tells the OS "hey, keep the screen on". Clean, efficient, exactly what you want.
 
-**Video Fallback** (Firefox, Safari, older browsers)
+**Video Fallback** (Firefox, Safari, older browsers)<br>
 Plays an invisible 1-frame video on loop. The browser thinks "oh, video is playing" and keeps the screen awake. Hacky? Maybe. Does it work? Absolutely.
 
 The tool automatically detects which method your browser supports and uses the best option available. You don't need to think about it.
@@ -75,8 +76,7 @@ Github Pages is free, fast, and you get HTTPS by default. Perfect for a static P
 
 The interface is intentionally simple:
 
-**START** → Activates sleep prevention
-
+**START** → Activates sleep prevention<br>
 **STOP** → Deactivates and lets your screen sleep normally
 
 When active, you'll see the status change to show which method is being used (Wake Lock or Video Fallback). Check the browser console (F12) for detailed logs if you're curious about what's happening under the hood.
@@ -98,13 +98,10 @@ Basically, if your browser was released after 2020, you're good. If you're someh
 
 ## Tech Stack
 
-**Frontend:** Vanilla JavaScript (no frameworks, no build tools, no `node_modules` black hole)
-
-**Styling:** Pure CSS with hacker terminal aesthetic
-
-**PWA:** Service Worker for offline support and caching
-
-**APIs:** Wake Lock API + HTML5 Video as fallback
+**Frontend:** Vanilla JavaScript (no frameworks, no build tools, no `node_modules` black hole)<br>
+**Styling:** Pure CSS with hacker terminal aesthetic<br>
+**PWA:** Service Worker for offline support and caching<br>
+**APIs:** Wake Lock API + HTML5 Video as fallback<br>
 
 The entire app is three files: `index.html`, `sw.js`, and `manifest.json`. That's it. No webpack, no babel, no 300MB dependencies. Just clean, readable code that does one thing well.
 
@@ -151,19 +148,19 @@ See [LICENSE](LICENSE) for details.
 
 ## FAQ
 
-**Q: Does this drain my battery?**
+**Q: Does this drain my battery?**<br>
 A: Less than watching a video or keeping your screen on manually. The Wake Lock API is pretty efficient, and the video fallback uses a tiny 1-frame video.
 
-**Q: Will this keep my laptop from sleeping when I close the lid?**
+**Q: Will this keep my laptop from sleeping when I close the lid?**<br>
 A: No. This prevents *screen* sleep and *display* timeout, but closing the lid triggers a hardware/OS-level sleep that browsers can't override. That's a good thing - you don't want random web pages preventing your laptop from sleeping when you close it.
 
-**Q: Can I use this on mobile?**
+**Q: Can I use this on mobile?**<br>
 A: Yes, but results may vary. iOS Safari and Android Chrome both support it, but mobile browsers are more aggressive about background tab management. Works best when the app is visible and in the foreground.
 
-**Q: Is this legal?**
+**Q: Is this legal?**<br>
 A: Yes??? It's literally just a web page using standard browser APIs. If this is illegal, half the internet is in trouble.
 
-**Q: Why is it called N0SLH33P with leetspeak in the UI but nosleep-web in the repo name?**
+**Q: Why is it called N0SLH33P with leetspeak in the UI but nosleep-web in the repo name?**<br>
 A: Because SEO exists and people search for "nosleep web" not "n0slh33p". The leetspeak is just for aesthetic vibes in the UI.
 
 ---
