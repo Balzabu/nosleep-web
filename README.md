@@ -4,7 +4,7 @@
 
 A browser-based sleep prevention tool that actually works. No downloads, no sus registry edits, no "trust me bro" installers. Just open, click start, and your screen stays awake.
 
-**Live Demo:** 
+**Live Demo:** https://balzabu.github.io/nosleep-web/
 
 ## Why This Exists
 
@@ -44,7 +44,7 @@ The tool automatically detects which method your browser supports and uses the b
 
 ### Quick Start (Just Use It)
 
-Open [the live demo](https://yourusername.github.io/nosleep-web) and click START. That's it. Bookmark it if you want.
+Open [the live demo](https://balzabu.github.io/nosleep-web/) and click START. That's it. Bookmark it if you want.
 
 ### Install as PWA (Recommended)
 
