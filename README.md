@@ -21,13 +21,11 @@ Yeah, me too. That's why this exists. It's just a web page that leverages browse
 
 ## How It Works
 
-The tool uses two different approaches depending on your browser:
+**Wake Lock API** (the default)<br>
+Native browser API that tells the OS to keep the screen on. As of March 2025 it's supported by every major browser: Chrome/Edge 84+, Firefox 126+, Safari 16.4+ on macOS, and iOS 18.4+. So almost everyone gets this method.
 
-**Wake Lock API** (Chrome, Edge, Opera, Brave)<br>
-Native browser API that tells the OS "hey, keep the screen on". Clean, efficient, exactly what you want.
-
-**Video Fallback** (Firefox, Safari, older browsers)<br>
-Plays an invisible 1-frame video on loop. The browser thinks "oh, video is playing" and keeps the screen awake. Hacky? Maybe. Does it work? Absolutely.
+**Video Fallback** (legacy browsers only)<br>
+For anything older than the versions above, the tool plays an invisible muted 1-frame video on loop. The browser thinks "oh, video is playing" and keeps the screen awake. Hacky? Maybe. Does it work? Absolutely.
 
 The tool automatically detects which method your browser supports and uses the best option available. You don't need to think about it.
 
@@ -39,7 +37,11 @@ The tool automatically detects which method your browser supports and uses the b
 
 **Zero tracking** - No analytics, no cookies, no telemetry, no phone-home behavior. What happens in your browser stays in your browser.
 
-**Tab visibility handling** - Warns you when the tab goes to the background since sleep prevention might not work correctly when hidden. No surprises, no "why isn't this working?" moments.
+**Tab visibility handling** - When you switch tabs the browser releases the lock automatically; the tool silently re-acquires it the moment you come back. No nagging pop-ups.
+
+**Auto-off timer** - Optionally have it stop on its own after 15 min, 30 min, 1 hour or 2 hours, with a live countdown.
+
+**Accessibility** - Status updates are announced to screen readers, and the CRT flicker/glitch effects switch off automatically if you've set "reduce motion".
 
 ## Installation
 
@@ -87,14 +89,15 @@ When active, you'll see the status change to show which method is being used (Wa
 
 | Browser | Method | Status |
 |---------|--------|--------|
-| Chrome 84+ | Wake Lock API | ✅ Native support |
-| Edge 84+ | Wake Lock API | ✅ Native support |
+| Chrome / Edge 84+ | Wake Lock API | ✅ Native support |
 | Opera 70+ | Wake Lock API | ✅ Native support |
 | Brave | Wake Lock API | ✅ Native support |
-| Firefox | Wake Lock API  | ✅ Native support but also supports fallback |
-| Safari (iOS/macOS) | Video Fallback | ✅ Works via fallback |
+| Firefox 126+ | Wake Lock API | ✅ Native support |
+| Safari 16.4+ (macOS) | Wake Lock API | ✅ Native support |
+| Safari iOS 18.4+ | Wake Lock API | ✅ Native support |
+| Older Safari / Firefox | Video Fallback | ✅ Works via fallback |
 
-Basically, if your browser was released after 2020, you're good. If you're somehow still on Internet Explorer... I can't help you, friend.
+Since March 2025 the Screen Wake Lock API is supported in every major browser (about 94% of users globally). Anything older automatically falls back to the video method. If you're somehow still on Internet Explorer... I can't help you, friend.
 
 ## Tech Stack
 
@@ -103,7 +106,7 @@ Basically, if your browser was released after 2020, you're good. If you're someh
 **PWA:** Service Worker for offline support and caching<br>
 **APIs:** Wake Lock API + HTML5 Video as fallback<br>
 
-The entire app is three files: `index.html`, `sw.js`, and `manifest.json`. That's it. No webpack, no babel, no 300MB dependencies. Just clean, readable code that does one thing well.
+The app is just a handful of static files: `index.html`, `sw.js`, `manifest.json` and a few PNG icons. No webpack, no babel, no 300MB dependencies. Just clean, readable code that does one thing well.
 
 ## Development
 
@@ -136,7 +139,7 @@ Then open `http://localhost:8000` in your browser.
 Found a bug? Want to add a feature? PRs are welcome. Just keep it simple and don't bloat the codebase with unnecessary dependencies.
 
 If you're adding a feature:
-- Keep it lightweight (the whole app is <20KB, let's maintain that)
+- Keep it lightweight (the whole thing is a few tens of KB, let's keep it that way)
 - Make sure it works across browsers
 - Update the README if it changes usage
 

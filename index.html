@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data: blob:; manifest-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
     <meta name="theme-color" content="#000000">
     <meta name="description" content="Web-based tool to keep your screen awake without installing suspicious executables">
+
+    <!-- PWA / installability -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="NoSleep">
+
     <title>N0SLH33P</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23000' width='100' height='100'/%3E%3Ctext x='50' y='68' font-size='62' text-anchor='middle' fill='%2300ff00' font-family='monospace'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <style>
         * {
             margin: 0;
@@ -125,11 +135,45 @@
             animation: blink 1s infinite;
         }
 
+        .timer-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 20px 0 5px;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+
+        select {
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            padding: 8px 12px;
+            background: #000;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .timer-info {
+            min-height: 1.2em;
+            font-size: 0.9rem;
+            opacity: 0.85;
+            letter-spacing: 1px;
+        }
+
         .buttons {
             display: flex;
             gap: 20px;
             justify-content: center;
-            margin: 30px 0;
+            margin: 20px 0 30px;
             flex-wrap: wrap;
         }
 
@@ -193,10 +237,22 @@
             h1 {
                 font-size: 1.8rem;
             }
-            
+
             button {
                 padding: 12px 30px;
                 font-size: 1rem;
+            }
+        }
+
+        /* Respect users who prefer less motion: kill the CRT effects */
+        @media (prefers-reduced-motion: reduce) {
+            body::after,
+            .status.active,
+            .cursor {
+                animation: none;
+            }
+            button {
+                transition: none;
             }
         }
     </style>
@@ -206,16 +262,28 @@
         <h1>⚡ N0SLH33P ⚡</h1>
         <div class="subtitle">[ SLEEP PREVENTION SYSTEM ]</div>
 
-        <div class="status" id="status">
-            <span class="status-text">STATUS: STANDBY</span><span class="cursor">_</span>
+        <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true">
+            <span class="status-text" id="statusText">STATUS: STANDBY</span><span class="cursor" aria-hidden="true">_</span>
         </div>
+
+        <div class="timer-row">
+            <label for="timerSelect">AUTO-OFF:</label>
+            <select id="timerSelect" aria-label="Automatically stop after a set time">
+                <option value="0">OFF</option>
+                <option value="15">15 MIN</option>
+                <option value="30">30 MIN</option>
+                <option value="60">1 HOUR</option>
+                <option value="120">2 HOURS</option>
+            </select>
+        </div>
+        <div class="timer-info" id="timerInfo" aria-live="polite"></div>
 
         <div class="buttons">
-            <button id="startBtn">▶ START</button>
-            <button id="stopBtn" disabled>■ STOP</button>
+            <button id="startBtn" type="button">▶ START</button>
+            <button id="stopBtn" type="button" disabled>■ STOP</button>
         </div>
 
-        <div class="error" id="error"></div>
+        <div class="error" id="error" role="alert"></div>
 
         <div class="info">
             <p>▸ Prevents screen and system sleep without installing sketchy executables</p>
@@ -228,102 +296,117 @@
         let wakeLock = null;
         let noSleepVideo = null;
         let isActive = false;
-        let useWakeLock = false;
-        
+        const useWakeLock = 'wakeLock' in navigator;
+
+        // Auto-off timer state
+        let autoOffTimeout = null;
+        let countdownInterval = null;
+        let autoOffAt = 0;
+
         const statusDiv = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
         const errorDiv = document.getElementById('error');
+        const timerSelect = document.getElementById('timerSelect');
+        const timerInfo = document.getElementById('timerInfo');
 
-        // Register Service Worker for PWA
+        // Register Service Worker for PWA (relative path -> works under any base path)
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
+            navigator.serviceWorker.register('./sw.js')
                 .then(() => console.log('✓ Service Worker registered'))
                 .catch(err => console.error('✗ Service Worker error:', err));
         }
 
-        // Detect Wake Lock API support
-        useWakeLock = 'wakeLock' in navigator;
         console.log(`Method used: ${useWakeLock ? 'Wake Lock API' : 'Video Fallback'}`);
 
-        // Initialize video fallback for browsers without Wake Lock (Firefox, Safari)
+        // Initialize video fallback for legacy browsers (old Safari/Firefox, etc.)
         function initVideoFallback() {
             if (noSleepVideo) return;
-            
+
             noSleepVideo = document.createElement('video');
-            noSleepVideo.setAttribute('playsinline', '');
+            // muted MUST be set as a property (not just an attribute) or autoplay
+            // policies will block playback on the very browsers that need the fallback.
+            noSleepVideo.muted = true;
+            noSleepVideo.defaultMuted = true;
             noSleepVideo.setAttribute('muted', '');
+            noSleepVideo.setAttribute('playsinline', '');
+            noSleepVideo.setAttribute('aria-hidden', 'true');
+            noSleepVideo.loop = true;
             noSleepVideo.style.position = 'fixed';
             noSleepVideo.style.opacity = '0';
             noSleepVideo.style.left = '-9999px';
             noSleepVideo.style.width = '1px';
             noSleepVideo.style.height = '1px';
-            
-            // Create minimal WebM video (1 black frame)
-            const webmData = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwH/////////FUmpZpkq17GDD0JATYCGQ2hyb21lV0GGQ2hyb21lFlSua7+uvdeBAXPFh1mBmDZDgQKGhkBDZ2xvYmFsZmBXTULigBmFGYABR3JpY2luUyNhZ2FiYmVsXTBWRjGWQ2hyb2JlbGwb5whhciBnQ2FsQGKGZGZjQyBnbG9iYWxWaWRlb0BnaGFydGhhYWxlXBhTgQKqgQKgqQOqCQOTAmJiYmJiYmJiYmJiYmJiYmJpZG14pYjGfQCvFe4C/v//vg==';
-            
-            noSleepVideo.src = webmData;
-            noSleepVideo.loop = true;
-            
+
+            // Minimal WebM video (1 black frame)
+            noSleepVideo.src = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwH/////////FUmpZpkq17GDD0JATYCGQ2hyb21lV0GGQ2hyb21lFlSua7+uvdeBAXPFh1mBmDZDgQKGhkBDZ2xvYmFsZmBXTULigBmFGYABR3JpY2luUyNhZ2FiYmVsXTBWRjGWQ2hyb2JlbGwb5whhciBnQ2FsQGKGZGZjQyBnbG9iYWxWaWRlb0BnaGFydGhhYWxlXBhTgQKqgQKgqQOqCQOTAmJiYmJiYmJiYmJiYmJiYmJpZG14pYjGfQCvFe4C/v//vg==';
+
             document.body.appendChild(noSleepVideo);
+        }
+
+        async function playFallback() {
+            try {
+                await noSleepVideo.play();
+                console.log('✓ Video fallback activated');
+            } catch (err) {
+                console.warn('Autoplay blocked, will retry on next user interaction');
+                document.addEventListener('click', async () => {
+                    if (isActive && noSleepVideo.paused) {
+                        try { await noSleepVideo.play(); } catch (e) { /* ignore */ }
+                    }
+                }, { once: true });
+            }
+        }
+
+        async function requestWakeLock() {
+            wakeLock = await navigator.wakeLock.request('screen');
+            // The browser auto-releases the lock when the tab is hidden; we
+            // re-acquire on visibilitychange, so no aggressive retry loop here.
+            wakeLock.addEventListener('release', () => console.log('Wake Lock released'));
+        }
+
+        function handleActivationError(err) {
+            isActive = false;
+            let msg;
+            if (err && err.name === 'NotAllowedError') {
+                msg = 'Wake Lock denied. This often happens with battery saver on, or when the tab is not visible. Try again with the tab focused.';
+            } else {
+                msg = `Error: ${err && err.message ? err.message : err}`;
+            }
+            showError(msg);
+            console.error('Activation error:', err);
+            stopNoSleep();
         }
 
         // Start sleep prevention
         async function startNoSleep() {
             try {
                 if (useWakeLock) {
-                    // Use Wake Lock API (Chrome, Edge, Opera)
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock released');
-                        if (isActive) {
-                            // Retry if still active
-                            setTimeout(() => {
-                                if (isActive && document.visibilityState === 'visible') {
-                                    startNoSleep();
-                                }
-                            }, 100);
-                        }
-                    });
-
+                    await requestWakeLock();
                     console.log('✓ Wake Lock API activated');
                 } else {
-                    // Use video fallback (Firefox, Safari, others)
                     initVideoFallback();
-                    
-                    // Play the video
-                    try {
-                        await noSleepVideo.play();
-                        console.log('✓ Video fallback activated');
-                    } catch (err) {
-                        // If play() fails, user interaction might be needed
-                        console.warn('Autoplay blocked, retrying...');
-                        // Play will be retried on click
-                        document.addEventListener('click', async () => {
-                            if (isActive && noSleepVideo.paused) {
-                                await noSleepVideo.play();
-                            }
-                        }, { once: true });
-                    }
+                    await playFallback();
                 }
 
                 isActive = true;
                 updateStatus(true);
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
+                timerSelect.disabled = true;
                 errorDiv.classList.remove('show');
-                
+                updateBadge(true);
+                startAutoOff();
             } catch (err) {
-                showError(`Error: ${err.message}`);
-                console.error('Activation error:', err);
-                isActive = false;
+                handleActivationError(err);
             }
         }
 
         // Stop sleep prevention
         async function stopNoSleep() {
             isActive = false;
+            clearAutoOff();
 
             try {
                 if (useWakeLock && wakeLock !== null) {
@@ -334,24 +417,67 @@
                     noSleepVideo.pause();
                     console.log('✓ Video fallback deactivated');
                 }
-
-                updateStatus(false);
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-
             } catch (err) {
                 console.error('Deactivation error:', err);
             }
+
+            updateStatus(false);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            timerSelect.disabled = false;
+            updateBadge(false);
+        }
+
+        // Show/clear an app icon badge while active (PWA only; ignored elsewhere)
+        function updateBadge(active) {
+            try {
+                if (active && navigator.setAppBadge) {
+                    navigator.setAppBadge();
+                } else if (!active && navigator.clearAppBadge) {
+                    navigator.clearAppBadge();
+                }
+            } catch (e) { /* Badging API not available */ }
+        }
+
+        // ----- Auto-off timer -----
+        function startAutoOff() {
+            const minutes = parseInt(timerSelect.value, 10);
+            if (!minutes) { timerInfo.textContent = ''; return; }
+
+            autoOffAt = performance.now() + minutes * 60000;
+            autoOffTimeout = setTimeout(() => {
+                stopNoSleep();
+                timerInfo.textContent = 'AUTO-OFF: timer elapsed';
+            }, minutes * 60000);
+
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+        }
+
+        function clearAutoOff() {
+            if (autoOffTimeout) { clearTimeout(autoOffTimeout); autoOffTimeout = null; }
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+            timerInfo.textContent = '';
+        }
+
+        function updateCountdown() {
+            const remaining = Math.max(0, Math.round((autoOffAt - performance.now()) / 1000));
+            const h = Math.floor(remaining / 3600);
+            const m = Math.floor((remaining % 3600) / 60);
+            const s = remaining % 60;
+            const pad = n => String(n).padStart(2, '0');
+            const text = h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+            timerInfo.textContent = `AUTO-OFF IN ${text}`;
         }
 
         // Update visual status
         function updateStatus(active) {
             const method = useWakeLock ? 'WAKE LOCK' : 'VIDEO FALLBACK';
             if (active) {
-                statusDiv.innerHTML = `<span class="status-text">STATUS: ACTIVE [${method}]</span><span class="cursor">_</span>`;
+                statusText.textContent = `STATUS: ACTIVE [${method}]`;
                 statusDiv.classList.add('active');
             } else {
-                statusDiv.innerHTML = '<span class="status-text">STATUS: STANDBY</span><span class="cursor">_</span>';
+                statusText.textContent = 'STATUS: STANDBY';
                 statusDiv.classList.remove('active');
             }
         }
@@ -366,46 +492,45 @@
         startBtn.addEventListener('click', startNoSleep);
         stopBtn.addEventListener('click', stopNoSleep);
 
-        // Handle tab visibility changes
+        // Re-acquire the lock when the tab becomes visible again.
+        // No blocking confirm() dialog: the browser already releases the lock
+        // automatically when the tab is hidden, so we just restore it on return.
         document.addEventListener('visibilitychange', async () => {
-            if (document.visibilityState === 'hidden' && isActive) {
-                // Tab hidden while system is active
-                const shouldStop = confirm(
-                    '⚠️ WARNING\n\n' +
-                    'Sleep prevention is active but the tab is in the background.\n\n' +
-                    'Protection might not work correctly when the tab is not visible.\n\n' +
-                    'Do you want to STOP the system?\n\n' +
-                    'OK = Stop\n' +
-                    'Cancel = Continue (will reactivate when you return to the tab)'
-                );
-
-                if (shouldStop) {
-                    await stopNoSleep();
-                }
-            } else if (document.visibilityState === 'visible' && isActive) {
-                // Tab visible again, reactivate
+            if (document.visibilityState === 'visible' && isActive) {
                 if (useWakeLock) {
-                    await startNoSleep();
+                    try {
+                        await requestWakeLock();
+                    } catch (err) {
+                        handleActivationError(err);
+                    }
                 } else if (noSleepVideo && noSleepVideo.paused) {
-                    await noSleepVideo.play();
+                    try { await noSleepVideo.play(); } catch (e) { /* ignore */ }
                 }
             }
         });
 
-        // Cleanup when page is closed
-        window.addEventListener('beforeunload', () => {
-            if (isActive) {
-                stopNoSleep();
+        // Cleanup when the page is hidden/closed (pagehide is bfcache-friendly)
+        window.addEventListener('pagehide', () => {
+            if (!isActive) return;
+            updateBadge(false);
+            if (useWakeLock && wakeLock !== null) {
+                wakeLock.release().catch(() => {});
+            } else if (noSleepVideo) {
+                noSleepVideo.pause();
             }
         });
 
-        // Show method used in console
+        // Startup banner
         window.addEventListener('load', () => {
+            const ua = navigator.userAgent;
+            const browser = ua.includes('Firefox') ? 'Firefox'
+                : (ua.includes('Safari') && !ua.includes('Chrome')) ? 'Safari'
+                : 'Chrome/Edge/Opera';
             console.log('═══════════════════════════════════════');
             console.log('🔥 N0SLH33P INITIALIZED');
             console.log('═══════════════════════════════════════');
-            console.log(`Browser: ${navigator.userAgent.includes('Firefox') ? 'Firefox' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Chrome/Edge/Opera'}`);
-            console.log(`Method: ${useWakeLock ? '✓ Wake Lock API (native)' : '✓ Video Fallback (compatibility)'}`);
+            console.log(`Browser: ${browser}`);
+            console.log(`Method: ${useWakeLock ? '✓ Wake Lock API (native)' : '✓ Video Fallback (legacy)'}`);
             console.log(`PWA: ${window.matchMedia('(display-mode: standalone)').matches ? '✓ Installed' : '○ Browser'}`);
             console.log('═══════════════════════════════════════');
         });
